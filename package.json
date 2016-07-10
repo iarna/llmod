@@ -1,0 +1,44 @@
+{
+  "name": "llmod",
+  "version": "1.0.0",
+  "description": "List your local and remote modules.",
+  "main": "index.js",
+  "bin": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "test": "standard && tap test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iarna/llmod"
+  },
+  "keywords": [
+    "listing",
+    "modules"
+  ],
+  "author": "Rebecca Turner <me@re-becca.org> (http://re-becca.org/)",
+  "license": "ISC",
+  "dependencies": {
+    "archy": "^1.0.0",
+    "console-control-strings": "^1.1.0",
+    "has-unicode": "^2.0.1",
+    "psilotum": "^1.0.0",
+    "read-module-tree": "^1.0.0",
+    "through2": "^2.0.1",
+    "yargs": "^4.7.1"
+  },
+  "bundleDependencies": [
+    "psilotum",
+    "read-module-tree"
+  ],
+  "devDependencies": {
+    "standard": "^7.1.2",
+    "tap": "^6.1.1"
+  },
+  "bugs": {
+    "url": "https://github.com/iarna/llmod/issues"
+  },
+  "homepage": "https://github.com/iarna/llmod"
+}
