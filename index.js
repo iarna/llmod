@@ -12,6 +12,7 @@ var hasUnicode = require('has-unicode')
 var archy = require('archy')
 var Find = require('psilotum')
 var color = require('console-control-strings').color
+var parallel = require('async/parallel')
 
 var top = argv._[0] || '.'
 var namebits = path.resolve(top).split(path.sep)
@@ -22,42 +23,44 @@ var tree = {
   children: {}
 }
 
-// Fill the tree with plain javascript:
+parallel([findPlainJS, findModules], thenPrintTheTree)
 
-Find(top, {filter: matchJsFiles})
-  .on('data', function (file) {
-    var relative = path.relative(top, file.path).split(path.sep)
-    var filename = relative.pop()
-    var branch = tree.children
-    var cwd = ''
-    var dir
-    while (dir = relative.shift()) {
-      cwd = path.join(cwd, dir)
-      if (!branch[dir]) branch[dir] = {
-        type: 'directory',
-        name: cwd,
-        children: {}
+function findPlainJS (cb) {
+  Find(top, {filter: matchJsFiles})
+    .on('data', function (file) {
+      var relative = path.relative(top, file.path).split(path.sep)
+      var filename = relative.pop()
+      var branch = tree.children
+      var cwd = ''
+      var dir
+      while (dir = relative.shift()) {
+        cwd = path.join(cwd, dir)
+        if (!branch[dir]) branch[dir] = {
+          type: 'directory',
+          name: cwd,
+          children: {}
+        }
+        branch = branch[dir].children
       }
-      branch = branch[dir].children
-    }
-    if (file.stat.isDirectory()) {
-      branch[filename] = {
-        name: path.relative(top, file.path),
-        type: 'directory',
-        children: {}
+      if (file.stat.isDirectory()) {
+        branch[filename] = {
+          name: path.relative(top, file.path),
+          type: 'directory',
+          children: {}
+        }
+      } else {
+        branch[filename] = {
+          name: path.relative(top, file.path),
+          type: 'local'
+        }
       }
-    } else {
-      branch[filename] = {
-        name: path.relative(top, file.path),
-        type: 'local'
-      }
-    }
-  })
-  .on('error', function (err) {
-    console.error(err.message)
-    process.exit(1)
-  })
-  .on('end', thenReadModuleTree)
+    })
+    .on('error', function (err) {
+      console.error(err.message)
+      process.exit(1)
+    })
+    .on('end', cb)
+}
 
 function matchJsFiles (file, parent, cb) {
   if (file.basename === 'node_modules' || /^[.]/.test(file.basename)) {
@@ -72,7 +75,7 @@ function matchJsFiles (file, parent, cb) {
 }
 
 // Fill the tree with node modules
-function thenReadModuleTree () {
+function findModules (cb) {
   new ReadModuleTree(top)
     .pipe(SkipDotModules())
     .pipe(ReadPackageMetadata())
@@ -108,7 +111,7 @@ function thenReadModuleTree () {
       console.error(err)
       process.exit(1)
     })
-    .on('end', thenPrintTheTree)
+    .on('end', cb)
 }
 
 // Pretty print the tree
