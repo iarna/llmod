@@ -6,7 +6,8 @@ var argv = require('yargs')
   .demand(0, 1)
   .argv
 var fs = require('fs')
-var ReadModuleTree = require('read-module-tree')
+var fun = require('funstream')
+var readModuleList = require('read-module-list')
 var through2 = require('through2')
 var hasUnicode = require('has-unicode')
 var archy = require('archy')
@@ -23,7 +24,13 @@ var tree = {
   children: {}
 }
 
-parallel([findPlainJS, findModules], thenPrintTheTree)
+var exec = require('child_process').exec
+var globalPath
+exec('npm config get prefix', {}, function (err, stdout, stderr ) {
+  if (err) throw err
+  globalPath = stdout.trim()
+  parallel([findPlainJS, findModules], thenPrintTheTree)
+})
 
 function findPlainJS (cb) {
   Find(top, {filter: matchJsFiles})
@@ -76,10 +83,10 @@ function matchJsFiles (file, parent, cb) {
 
 // Fill the tree with node modules
 function findModules (cb) {
-  new ReadModuleTree(top)
+  fun(readModuleList(top))
     .pipe(SkipDotModules())
     .pipe(ReadPackageMetadata())
-    .on('data', function (mod) {
+    .forEach(function (mod) {
       // top level is special
       if (mod.modulepath === '/') {
         tree.type = mod.package ? (mod.package.private ? 'private' : 'public') : 'local',
@@ -98,20 +105,27 @@ function findModules (cb) {
         if (parent[0] === '@') parent = parent + '/' + modpath.shift()
         branch = branch.children[parent]
       }
+      var link
+      if (mod.isLink) {
+        if (path.relative(globalPath, mod.realpath)[0] === '.') {
+          link = path.relative(mod.path, mod.realpath)
+        } else {
+          link = color('bold') + '[global]' + color('stopBold')
+        }
+      }
       branch.children[mod.name] = {
         type: mod.package ? (mod.package.private ? 'private' : 'public') : 'local',
         name: mod.name,
         path: mod.path,
-        link: mod.isLink && path.relative(mod.path, mod.realpath),
+        link: link,
         version: mod.package && mod.package.version,
         children: {}
       }
     })
-    .on('error', function (err) {
+    .then(cb, function (err) {
       console.error(err)
       process.exit(1)
     })
-    .on('end', cb)
 }
 
 // Pretty print the tree
