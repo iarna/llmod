@@ -28,7 +28,6 @@
     "has-unicode": "^2.0.1",
     "psilotum": "github:iarna/psilotum#latest",
     "read-module-list": "github:iarna/read-module-list",
-    "through2": "^2.0.1",
     "yargs": "^4.7.1"
   },
   "bundleDependencies": [

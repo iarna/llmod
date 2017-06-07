@@ -8,7 +8,6 @@ var argv = require('yargs')
 var fs = require('fs')
 var fun = require('funstream')
 var readModuleList = require('read-module-list')
-var through2 = require('through2')
 var hasUnicode = require('has-unicode')
 var archy = require('archy')
 var Find = require('psilotum')
@@ -84,8 +83,8 @@ function matchJsFiles (file, parent, cb) {
 // Fill the tree with node modules
 function findModules (cb) {
   fun(readModuleList(top))
-    .pipe(SkipDotModules())
-    .pipe(ReadPackageMetadata())
+    .filter(mod => /^[^.]/.test(mod.name))
+    .map(ReadPackageMetadata)
     .forEach(function (mod) {
       // top level is special
       if (mod.modulepath === '/') {
@@ -177,30 +176,17 @@ function colorType (type) {
   }
 }
 
-function SkipDotModules () {
-  return through2.obj(function (mod, _, cb) {
-    if (/^[^.]/.test(mod.name)) {
-      this.push(mod)
-    }
-    cb()
-  })
-}
-
-function ReadPackageMetadata () {
-  return through2.obj(function (mod, _, cb) {
-    var self = this
-    fs.readFile(path.join(mod.path, 'package.json'), 'utf8', function (err, pkg) {
-      if (err) {
-        mod.error = err
-      } else {
-        try {
-          mod.package = JSON.parse(pkg)
-        } catch (ex) {
-          mod.error = ex
-        }
+function ReadPackageMetadata (mod, cb) {
+  fs.readFile(path.join(mod.path, 'package.json'), 'utf8', function (err, pkg) {
+    if (err) {
+      mod.error = err
+    } else {
+      try {
+        mod.package = JSON.parse(pkg)
+      } catch (ex) {
+        mod.error = ex
       }
-      self.push(mod)
-      cb()
-    })
+    }
+    cb(null, mod)
   })
 }
