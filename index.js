@@ -145,6 +145,9 @@ function archyize (tree) {
     label += tree.name
   }
   if (tree.version) label += '@' + tree.version
+  if (tree.type && search) {
+    label = color('underline') + label + color('reset')
+  }
   if (tree.type && tree.type !== 'directory') label += (label ? ' ' : '') + colorType(tree.type)
   if (tree.link) {
     label += (label ? ' ' : '') + color('italic') + '→ ' + tree.link + color('stopItalic')
