@@ -2,7 +2,7 @@
 'use strict'
 var path = require('path')
 var argv = require('yargs')
-  .usage('Usage: $0 [dir]\nList javascript source and node modules contained in the directory.')
+  .usage('Usage: $0 [search]\nList javascript source and node modules contained in the directory.')
   .demand(0, 1)
   .argv
 var fs = require('fs')
@@ -14,7 +14,8 @@ var Find = require('psilotum')
 var color = require('console-control-strings').color
 var parallel = require('async/parallel')
 
-var top = argv._[0] || '.'
+var search = argv._.length ? new RegExp(argv._.join(' ')) : false
+var top = '.'
 var namebits = path.resolve(top).split(path.sep)
 var name = namebits.pop()
 var parent = namebits.pop()
@@ -71,10 +72,12 @@ function findPlainJS (cb) {
 function matchJsFiles (file, parent, cb) {
   if (file.basename === 'node_modules' || /^[.]/.test(file.basename)) {
     return cb(null, Find.Skip)
-  } else if (/[.]js$/.test(file.basename)) {
-    return cb(null, Find.Include)
   } else if (file.stat.isDirectory()) {
     return cb(null, Find.Recurse)
+  } else if (search && !search.test(file.basename)) {
+    return cb(null, Find.Skip)
+  } else if (/[.]js$/.test(file.basename)) {
+    return cb(null, Find.Include)
   } else {
     return cb(null, Find.Skip)
   }
@@ -84,6 +87,7 @@ function matchJsFiles (file, parent, cb) {
 function findModules (cb) {
   fun(readModuleList(top))
     .filter(mod => /^[^.]/.test(mod.name))
+    .filter(mod => !search || search.test(mod.name))
     .map(ReadPackageMetadata)
     .forEach(function (mod) {
       // top level is special
@@ -102,6 +106,7 @@ function findModules (cb) {
       var parent
       while (parent = modpath.shift()) {
         if (parent[0] === '@') parent = parent + '/' + modpath.shift()
+        if (!branch.children[parent]) branch.children[parent] = {package: {name: parent}, children: {}}
         branch = branch.children[parent]
       }
       var link
